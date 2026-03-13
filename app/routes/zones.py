@@ -1,10 +1,10 @@
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session, col, func, select
+from fastapi import APIRouter, HTTPException, Query
+from sqlmodel import col, func, select
 
 from app.config import settings
-from app.database import get_session
+from app.dependencies import SessionDep
 from app.models import Zone, ZoneCreate, ZoneStatus, ZoneUpdate, utcnow
 from app.schemas import (
     CloudflareListResponse,
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/zones", tags=["Zones"])
 
 @router.get("", response_model=CloudflareListResponse[Zone])
 def list_zones(
-    session: Annotated[Session, Depends(get_session)],
+    session: SessionDep,
     name: str | None = None,
     account_id: str | None = None,
     status: ZoneStatus | None = None,
@@ -49,7 +49,7 @@ def list_zones(
 @router.get("/{zone_id}", response_model=CloudflareResponse[Zone])
 def get_zone(
     zone_id: str,
-    session: Annotated[Session, Depends(get_session)],
+    session: SessionDep,
 ) -> Any:
     zone = session.get(Zone, zone_id)
 
@@ -62,7 +62,7 @@ def get_zone(
 @router.post("", response_model=CloudflareResponse[Zone], status_code=201)
 def create_zone(
     data: ZoneCreate,
-    session: Annotated[Session, Depends(get_session)],
+    session: SessionDep,
 ) -> Any:
     zone = Zone(
         name=data.name,
@@ -80,7 +80,7 @@ def create_zone(
 def update_zone(
     zone_id: str,
     data: ZoneUpdate,
-    session: Annotated[Session, Depends(get_session)],
+    session: SessionDep,
 ) -> Any:
     zone = session.get(Zone, zone_id)
 
@@ -102,7 +102,7 @@ def update_zone(
 @router.delete("/{zone_id}", response_model=CloudflareResponse[DeleteResponse])
 def delete_zone(
     zone_id: str,
-    session: Annotated[Session, Depends(get_session)],
+    session: SessionDep,
 ) -> Any:
     zone = session.get(Zone, zone_id)
 

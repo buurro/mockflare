@@ -1,10 +1,29 @@
 from fastapi.testclient import TestClient
 
+from app.models import Zone
+
 ZONE_ID = "test-zone-123"
 
 
+class TestZoneValidation:
+    """Tests that DNS record endpoints properly validate zone existence."""
+
+    def test_create_record_with_nonexistent_zone(self, client: TestClient):
+        response = client.post(
+            "/zones/nonexistent-zone/dns_records",
+            json={"name": "example.com", "type": "A", "content": "192.0.2.1"},
+        )
+        assert response.status_code == 404
+        assert "Zone not found" in response.json()["detail"]
+
+    def test_list_records_with_nonexistent_zone(self, client: TestClient):
+        response = client.get("/zones/nonexistent-zone/dns_records")
+        assert response.status_code == 404
+        assert "Zone not found" in response.json()["detail"]
+
+
 class TestCreateDNSRecord:
-    def test_create_a_record(self, client: TestClient):
+    def test_create_a_record(self, client: TestClient, zone: Zone):
         response = client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={
@@ -25,7 +44,7 @@ class TestCreateDNSRecord:
         assert data["result"]["proxied"] is True
         assert "id" in data["result"]
 
-    def test_create_cname_record(self, client: TestClient):
+    def test_create_cname_record(self, client: TestClient, zone: Zone):
         response = client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={
@@ -39,7 +58,7 @@ class TestCreateDNSRecord:
         assert data["success"] is True
         assert data["result"]["type"] == "CNAME"
 
-    def test_create_mx_record(self, client: TestClient):
+    def test_create_mx_record(self, client: TestClient, zone: Zone):
         response = client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={
@@ -52,7 +71,7 @@ class TestCreateDNSRecord:
         assert response.status_code == 201
         assert response.json()["result"]["type"] == "MX"
 
-    def test_create_txt_record(self, client: TestClient):
+    def test_create_txt_record(self, client: TestClient, zone: Zone):
         response = client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={
@@ -64,7 +83,7 @@ class TestCreateDNSRecord:
         assert response.status_code == 201
         assert response.json()["result"]["type"] == "TXT"
 
-    def test_create_record_with_tags(self, client: TestClient):
+    def test_create_record_with_tags(self, client: TestClient, zone: Zone):
         response = client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={
@@ -77,7 +96,7 @@ class TestCreateDNSRecord:
         assert response.status_code == 201
         assert response.json()["result"]["tags"] == ["env:production", "team:platform"]
 
-    def test_create_record_with_comment(self, client: TestClient):
+    def test_create_record_with_comment(self, client: TestClient, zone: Zone):
         response = client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={
@@ -92,7 +111,7 @@ class TestCreateDNSRecord:
 
 
 class TestListDNSRecords:
-    def test_list_empty(self, client: TestClient):
+    def test_list_empty(self, client: TestClient, zone: Zone):
         response = client.get(f"/zones/{ZONE_ID}/dns_records")
         assert response.status_code == 200
         data = response.json()
@@ -100,7 +119,7 @@ class TestListDNSRecords:
         assert data["result"] == []
         assert data["result_info"]["count"] == 0
 
-    def test_list_records(self, client: TestClient):
+    def test_list_records(self, client: TestClient, zone: Zone):
         client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={"name": "a.example.com", "type": "A", "content": "192.0.2.1"},
@@ -116,7 +135,7 @@ class TestListDNSRecords:
         assert len(data["result"]) == 2
         assert data["result_info"]["count"] == 2
 
-    def test_filter_by_type(self, client: TestClient):
+    def test_filter_by_type(self, client: TestClient, zone: Zone):
         client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={"name": "example.com", "type": "A", "content": "192.0.2.1"},
@@ -132,7 +151,7 @@ class TestListDNSRecords:
         assert len(data["result"]) == 1
         assert data["result"][0]["type"] == "A"
 
-    def test_filter_by_name(self, client: TestClient):
+    def test_filter_by_name(self, client: TestClient, zone: Zone):
         client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={"name": "api.example.com", "type": "A", "content": "192.0.2.1"},
@@ -148,7 +167,7 @@ class TestListDNSRecords:
         assert len(data["result"]) == 1
         assert data["result"][0]["name"] == "api.example.com"
 
-    def test_pagination(self, client: TestClient):
+    def test_pagination(self, client: TestClient, zone: Zone):
         for i in range(5):
             client.post(
                 f"/zones/{ZONE_ID}/dns_records",
@@ -168,7 +187,7 @@ class TestListDNSRecords:
 
 
 class TestGetDNSRecord:
-    def test_get_existing_record(self, client: TestClient):
+    def test_get_existing_record(self, client: TestClient, zone: Zone):
         create_response = client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={"name": "example.com", "type": "A", "content": "192.0.2.1"},
@@ -181,13 +200,13 @@ class TestGetDNSRecord:
         assert data["success"] is True
         assert data["result"]["id"] == record_id
 
-    def test_get_nonexistent_record(self, client: TestClient):
+    def test_get_nonexistent_record(self, client: TestClient, zone: Zone):
         response = client.get(f"/zones/{ZONE_ID}/dns_records/nonexistent-id")
         assert response.status_code == 404
 
 
 class TestUpdateDNSRecord:
-    def test_patch_record(self, client: TestClient):
+    def test_patch_record(self, client: TestClient, zone: Zone):
         create_response = client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={
@@ -209,7 +228,7 @@ class TestUpdateDNSRecord:
         assert data["result"]["ttl"] == 7200
         assert data["result"]["name"] == "example.com"
 
-    def test_put_record(self, client: TestClient):
+    def test_put_record(self, client: TestClient, zone: Zone):
         create_response = client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={"name": "example.com", "type": "A", "content": "192.0.2.1"},
@@ -230,7 +249,7 @@ class TestUpdateDNSRecord:
         assert data["result"]["name"] == "new.example.com"
         assert data["result"]["content"] == "192.0.2.200"
 
-    def test_update_nonexistent_record(self, client: TestClient):
+    def test_update_nonexistent_record(self, client: TestClient, zone: Zone):
         response = client.patch(
             f"/zones/{ZONE_ID}/dns_records/nonexistent-id",
             json={"content": "192.0.2.100"},
@@ -239,7 +258,7 @@ class TestUpdateDNSRecord:
 
 
 class TestDeleteDNSRecord:
-    def test_delete_record(self, client: TestClient):
+    def test_delete_record(self, client: TestClient, zone: Zone):
         create_response = client.post(
             f"/zones/{ZONE_ID}/dns_records",
             json={"name": "example.com", "type": "A", "content": "192.0.2.1"},
@@ -255,6 +274,6 @@ class TestDeleteDNSRecord:
         get_response = client.get(f"/zones/{ZONE_ID}/dns_records/{record_id}")
         assert get_response.status_code == 404
 
-    def test_delete_nonexistent_record(self, client: TestClient):
+    def test_delete_nonexistent_record(self, client: TestClient, zone: Zone):
         response = client.delete(f"/zones/{ZONE_ID}/dns_records/nonexistent-id")
         assert response.status_code == 404

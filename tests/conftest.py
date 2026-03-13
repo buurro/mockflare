@@ -6,6 +6,7 @@ from sqlmodel.pool import StaticPool
 from app.database import get_session
 from app.dns_server import set_dns_engine
 from app.main import app
+from app.models import Zone
 
 
 @pytest.fixture(name="engine")
@@ -22,6 +23,7 @@ def engine_fixture():
     yield engine
     # Reset the DNS engine after tests
     set_dns_engine(None)
+    engine.dispose()
 
 
 @pytest.fixture(name="session")
@@ -39,3 +41,18 @@ def client_fixture(session: Session):
     client = TestClient(app)
     yield client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(name="zone")
+def zone_fixture(session: Session) -> Zone:
+    """Create a test zone for use in tests that require one."""
+    zone = Zone(
+        id="test-zone-123",
+        name="example.com",
+        account_id="test-account",
+        name_servers=["ns1.mockflare.local", "ns2.mockflare.local"],
+    )
+    session.add(zone)
+    session.commit()
+    session.refresh(zone)
+    return zone

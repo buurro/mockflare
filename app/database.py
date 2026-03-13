@@ -26,6 +26,11 @@ def _ensure_postgres_database_exists() -> None:
     if not db_name:
         return
 
+    # Validate database name to prevent SQL injection
+    # PostgreSQL identifiers: letters, digits, underscores (cannot start with digit)
+    if not db_name.replace("_", "").replace("-", "").isalnum():
+        raise ValueError(f"Invalid database name: {db_name}")
+
     # Connect to default 'postgres' database to create our database
     admin_url = settings.database_url.rsplit("/", 1)[0] + "/postgres"
     admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
@@ -37,6 +42,7 @@ def _ensure_postgres_database_exists() -> None:
                 {"db_name": db_name},
             )
             if not result.fetchone():
+                # Use identifier quoting for safety (db_name validated above)
                 conn.execute(text(f'CREATE DATABASE "{db_name}"'))
                 logger.info(f"Created PostgreSQL database: {db_name}")
     finally:

@@ -1,10 +1,29 @@
 from fastapi.testclient import TestClient
 
-ZONE_ID = "test-zone-456"
+from app.models import Zone
+
+ZONE_ID = "test-zone-123"
+
+
+class TestZoneValidation:
+    """Tests that custom hostname endpoints properly validate zone existence."""
+
+    def test_create_hostname_with_nonexistent_zone(self, client: TestClient):
+        response = client.post(
+            "/zones/nonexistent-zone/custom_hostnames",
+            json={"hostname": "app.example.com"},
+        )
+        assert response.status_code == 404
+        assert "Zone not found" in response.json()["detail"]
+
+    def test_list_hostnames_with_nonexistent_zone(self, client: TestClient):
+        response = client.get("/zones/nonexistent-zone/custom_hostnames")
+        assert response.status_code == 404
+        assert "Zone not found" in response.json()["detail"]
 
 
 class TestCreateCustomHostname:
-    def test_create_basic_hostname(self, client: TestClient):
+    def test_create_basic_hostname(self, client: TestClient, zone: Zone):
         response = client.post(
             f"/zones/{ZONE_ID}/custom_hostnames",
             json={"hostname": "app.example.com"},
@@ -19,7 +38,7 @@ class TestCreateCustomHostname:
         assert "ssl" in data["result"]
         assert data["result"]["ssl"]["method"] == "http"
 
-    def test_create_hostname_with_ssl_config(self, client: TestClient):
+    def test_create_hostname_with_ssl_config(self, client: TestClient, zone: Zone):
         response = client.post(
             f"/zones/{ZONE_ID}/custom_hostnames",
             json={
@@ -32,7 +51,7 @@ class TestCreateCustomHostname:
         assert data["result"]["ssl"]["method"] == "txt"
         assert data["result"]["ssl"]["bundle_method"] == "optimal"
 
-    def test_create_hostname_with_origin(self, client: TestClient):
+    def test_create_hostname_with_origin(self, client: TestClient, zone: Zone):
         response = client.post(
             f"/zones/{ZONE_ID}/custom_hostnames",
             json={
@@ -46,7 +65,7 @@ class TestCreateCustomHostname:
         assert data["result"]["custom_origin_server"] == "origin.example.com"
         assert data["result"]["custom_origin_sni"] == "sni.example.com"
 
-    def test_create_hostname_with_metadata(self, client: TestClient):
+    def test_create_hostname_with_metadata(self, client: TestClient, zone: Zone):
         response = client.post(
             f"/zones/{ZONE_ID}/custom_hostnames",
             json={
@@ -61,14 +80,14 @@ class TestCreateCustomHostname:
 
 
 class TestListCustomHostnames:
-    def test_list_empty(self, client: TestClient):
+    def test_list_empty(self, client: TestClient, zone: Zone):
         response = client.get(f"/zones/{ZONE_ID}/custom_hostnames")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert data["result"] == []
 
-    def test_list_hostnames(self, client: TestClient):
+    def test_list_hostnames(self, client: TestClient, zone: Zone):
         client.post(
             f"/zones/{ZONE_ID}/custom_hostnames", json={"hostname": "a.example.com"}
         )
@@ -81,7 +100,7 @@ class TestListCustomHostnames:
         data = response.json()
         assert len(data["result"]) == 2
 
-    def test_filter_by_hostname(self, client: TestClient):
+    def test_filter_by_hostname(self, client: TestClient, zone: Zone):
         client.post(
             f"/zones/{ZONE_ID}/custom_hostnames", json={"hostname": "api.example.com"}
         )
@@ -95,7 +114,7 @@ class TestListCustomHostnames:
         assert len(data["result"]) == 1
         assert "api" in data["result"][0]["hostname"]
 
-    def test_pagination(self, client: TestClient):
+    def test_pagination(self, client: TestClient, zone: Zone):
         for i in range(5):
             client.post(
                 f"/zones/{ZONE_ID}/custom_hostnames",
@@ -111,7 +130,7 @@ class TestListCustomHostnames:
 
 
 class TestGetCustomHostname:
-    def test_get_existing_hostname(self, client: TestClient):
+    def test_get_existing_hostname(self, client: TestClient, zone: Zone):
         create_response = client.post(
             f"/zones/{ZONE_ID}/custom_hostnames",
             json={"hostname": "get.example.com"},
@@ -125,13 +144,13 @@ class TestGetCustomHostname:
         assert data["result"]["id"] == hostname_id
         assert data["result"]["hostname"] == "get.example.com"
 
-    def test_get_nonexistent_hostname(self, client: TestClient):
+    def test_get_nonexistent_hostname(self, client: TestClient, zone: Zone):
         response = client.get(f"/zones/{ZONE_ID}/custom_hostnames/nonexistent-id")
         assert response.status_code == 404
 
 
 class TestUpdateCustomHostname:
-    def test_update_ssl_method(self, client: TestClient):
+    def test_update_ssl_method(self, client: TestClient, zone: Zone):
         create_response = client.post(
             f"/zones/{ZONE_ID}/custom_hostnames",
             json={"hostname": "update.example.com", "ssl": {"method": "http"}},
@@ -146,7 +165,7 @@ class TestUpdateCustomHostname:
         data = response.json()
         assert data["result"]["ssl"]["method"] == "txt"
 
-    def test_update_origin_server(self, client: TestClient):
+    def test_update_origin_server(self, client: TestClient, zone: Zone):
         create_response = client.post(
             f"/zones/{ZONE_ID}/custom_hostnames",
             json={"hostname": "origin.example.com"},
@@ -163,7 +182,7 @@ class TestUpdateCustomHostname:
             == "new-origin.example.com"
         )
 
-    def test_update_metadata(self, client: TestClient):
+    def test_update_metadata(self, client: TestClient, zone: Zone):
         create_response = client.post(
             f"/zones/{ZONE_ID}/custom_hostnames",
             json={"hostname": "meta.example.com", "custom_metadata": {"old": "value"}},
@@ -177,7 +196,7 @@ class TestUpdateCustomHostname:
         assert response.status_code == 200
         assert response.json()["result"]["custom_metadata"] == {"new": "data"}
 
-    def test_update_nonexistent_hostname(self, client: TestClient):
+    def test_update_nonexistent_hostname(self, client: TestClient, zone: Zone):
         response = client.patch(
             f"/zones/{ZONE_ID}/custom_hostnames/nonexistent-id",
             json={"ssl": {"method": "txt"}},
@@ -186,7 +205,7 @@ class TestUpdateCustomHostname:
 
 
 class TestDeleteCustomHostname:
-    def test_delete_hostname(self, client: TestClient):
+    def test_delete_hostname(self, client: TestClient, zone: Zone):
         create_response = client.post(
             f"/zones/{ZONE_ID}/custom_hostnames",
             json={"hostname": "delete.example.com"},
@@ -202,6 +221,6 @@ class TestDeleteCustomHostname:
         get_response = client.get(f"/zones/{ZONE_ID}/custom_hostnames/{hostname_id}")
         assert get_response.status_code == 404
 
-    def test_delete_nonexistent_hostname(self, client: TestClient):
+    def test_delete_nonexistent_hostname(self, client: TestClient, zone: Zone):
         response = client.delete(f"/zones/{ZONE_ID}/custom_hostnames/nonexistent-id")
         assert response.status_code == 404

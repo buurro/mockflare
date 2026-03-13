@@ -1,12 +1,12 @@
 import contextlib
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from sqlmodel import Session, col, func, select
+from sqlmodel import col, func, select
 
-from app.database import get_session
+from app.dependencies import SessionDep, ZoneDep
 from app.models import (
     CustomHostname,
     CustomHostnameCreate,
@@ -85,14 +85,14 @@ def to_response(ch: CustomHostname) -> CustomHostnameResponse:
 
 @router.get("", response_model=CloudflareListResponse[CustomHostnameResponse])
 def list_custom_hostnames(
-    zone_id: str,
-    session: Annotated[Session, Depends(get_session)],
+    zone: ZoneDep,
+    session: SessionDep,
     hostname: str | None = None,
     status: CustomHostnameStatus | None = None,
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=100, ge=1, le=5000),
 ) -> Any:
-    query = select(CustomHostname).where(CustomHostname.zone_id == zone_id)
+    query = select(CustomHostname).where(CustomHostname.zone_id == zone.id)
 
     if hostname is not None:
         query = query.where(col(CustomHostname.hostname).contains(hostname))
@@ -117,13 +117,13 @@ def list_custom_hostnames(
     "/{custom_hostname_id}", response_model=CloudflareResponse[CustomHostnameResponse]
 )
 def get_custom_hostname(
-    zone_id: str,
+    zone: ZoneDep,
     custom_hostname_id: str,
-    session: Annotated[Session, Depends(get_session)],
+    session: SessionDep,
 ):
     ch = session.exec(
         select(CustomHostname).where(
-            CustomHostname.zone_id == zone_id,
+            CustomHostname.zone_id == zone.id,
             CustomHostname.id == custom_hostname_id,
         )
     ).first()
@@ -138,14 +138,14 @@ def get_custom_hostname(
     "", response_model=CloudflareResponse[CustomHostnameResponse], status_code=201
 )
 def create_custom_hostname(
-    zone_id: str,
+    zone: ZoneDep,
     data: CustomHostnameCreate,
-    session: Annotated[Session, Depends(get_session)],
+    session: SessionDep,
 ):
     hostname_status, hostname_ssl_status = get_status_from_hostname(data.hostname)
 
     ch = CustomHostname(
-        zone_id=zone_id,
+        zone_id=zone.id,
         hostname=data.hostname,
         status=hostname_status or CustomHostnameStatus.active,
         ssl_status=hostname_ssl_status or SSLStatus.active,
@@ -169,14 +169,14 @@ def create_custom_hostname(
     "/{custom_hostname_id}", response_model=CloudflareResponse[CustomHostnameResponse]
 )
 def update_custom_hostname(
-    zone_id: str,
+    zone: ZoneDep,
     custom_hostname_id: str,
     data: CustomHostnameUpdate,
-    session: Annotated[Session, Depends(get_session)],
+    session: SessionDep,
 ):
     ch = session.exec(
         select(CustomHostname).where(
-            CustomHostname.zone_id == zone_id,
+            CustomHostname.zone_id == zone.id,
             CustomHostname.id == custom_hostname_id,
         )
     ).first()
@@ -206,13 +206,13 @@ def update_custom_hostname(
     "/{custom_hostname_id}", response_model=CloudflareResponse[DeleteResponse]
 )
 def delete_custom_hostname(
-    zone_id: str,
+    zone: ZoneDep,
     custom_hostname_id: str,
-    session: Annotated[Session, Depends(get_session)],
+    session: SessionDep,
 ):
     ch = session.exec(
         select(CustomHostname).where(
-            CustomHostname.zone_id == zone_id,
+            CustomHostname.zone_id == zone.id,
             CustomHostname.id == custom_hostname_id,
         )
     ).first()
