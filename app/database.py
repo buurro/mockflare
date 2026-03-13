@@ -3,7 +3,7 @@ from collections.abc import Generator
 from pathlib import Path
 from urllib.parse import urlparse
 
-from sqlalchemy import inspect, text
+from sqlalchemy import event, inspect, text
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.config import settings
@@ -44,6 +44,16 @@ def _ensure_postgres_database_exists() -> None:
 
 
 engine = _get_engine()
+
+
+# Enable foreign key support for SQLite
+if settings.database_url.startswith("sqlite"):
+
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
 def _sqlite_db_exists() -> bool:

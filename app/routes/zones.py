@@ -3,6 +3,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, col, func, select
 
+from app.config import settings
 from app.database import get_session
 from app.models import Zone, ZoneCreate, ZoneStatus, ZoneUpdate, utcnow
 from app.schemas import (
@@ -67,7 +68,7 @@ def create_zone(
         name=data.name,
         account_id=data.account_id,
         type=data.type,
-        name_servers=["ns1.mockflare.com", "ns2.mockflare.com"],
+        name_servers=settings.nameservers,
     )
     session.add(zone)
     session.commit()

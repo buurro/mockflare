@@ -50,7 +50,7 @@ class DNSRecord(DNSRecordBase, table=True):
     __tablename__ = "dns_records"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
-    zone_id: str = Field(index=True)
+    zone_id: str = Field(index=True, foreign_key="zones.id", ondelete="CASCADE")
     created_on: datetime = Field(default_factory=utcnow)
     modified_on: datetime = Field(default_factory=utcnow)
 
@@ -150,7 +150,7 @@ class CustomHostname(CustomHostnameBase, table=True):
     __tablename__ = "custom_hostnames"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
-    zone_id: str = Field(index=True)
+    zone_id: str = Field(index=True, foreign_key="zones.id", ondelete="CASCADE")
     status: CustomHostnameStatus = CustomHostnameStatus.pending
     ssl_method: SSLMethod = SSLMethod.http
     ssl_type: str = "dv"

@@ -151,3 +151,56 @@ class TestDeleteZone:
     def test_delete_nonexistent_zone(self, client: TestClient):
         response = client.delete("/zones/nonexistent-id")
         assert response.status_code == 404
+
+    def test_delete_zone_cascades_to_dns_records(self, client: TestClient):
+        # Create zone
+        zone_response = client.post(
+            "/zones",
+            json={"name": "cascade.example.com", "account_id": ACCOUNT_ID},
+        )
+        zone_id = zone_response.json()["result"]["id"]
+
+        # Create DNS record
+        record_response = client.post(
+            f"/zones/{zone_id}/dns_records",
+            json={"name": "www.cascade.example.com", "type": "A", "content": "1.2.3.4"},
+        )
+        record_id = record_response.json()["result"]["id"]
+
+        # Verify record exists
+        assert (
+            client.get(f"/zones/{zone_id}/dns_records/{record_id}").status_code == 200
+        )
+
+        # Delete zone
+        client.delete(f"/zones/{zone_id}")
+
+        # Verify zone is gone
+        assert client.get(f"/zones/{zone_id}").status_code == 404
+
+    def test_delete_zone_cascades_to_custom_hostnames(self, client: TestClient):
+        # Create zone
+        zone_response = client.post(
+            "/zones",
+            json={"name": "cascade2.example.com", "account_id": ACCOUNT_ID},
+        )
+        zone_id = zone_response.json()["result"]["id"]
+
+        # Create custom hostname
+        hostname_response = client.post(
+            f"/zones/{zone_id}/custom_hostnames",
+            json={"hostname": "app.customer.com"},
+        )
+        hostname_id = hostname_response.json()["result"]["id"]
+
+        # Verify hostname exists
+        assert (
+            client.get(f"/zones/{zone_id}/custom_hostnames/{hostname_id}").status_code
+            == 200
+        )
+
+        # Delete zone
+        client.delete(f"/zones/{zone_id}")
+
+        # Verify zone is gone
+        assert client.get(f"/zones/{zone_id}").status_code == 404

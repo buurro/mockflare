@@ -2,7 +2,7 @@
 
 > ⚠️ **AI-generated code, work in progress, for local development only.** Not affiliated with Cloudflare.
 
-A mock implementation of the Cloudflare API for local development and testing. Supports DNS Records and Custom Hostnames management.
+A mock implementation of the Cloudflare API for local development and testing. Supports DNS Records and Custom Hostnames management. Includes a built-in DNS server that resolves records from the database.
 
 ## Quick Start
 
@@ -58,6 +58,20 @@ Valid values: [`status`](app/models.py#L114), [`ssl.status`](app/models.py#L84)
 | `DATABASE_URL` | `sqlite:///./mockflare.db` | Database connection string |
 | `CREATE_DB` | `true` | Auto-create database if not found |
 | `SEED_DATA` | (empty) | Seed data JSON (see below) |
+| `DNS_PORT` | `10053` | DNS server port |
+| `DNS_ADDRESS` | `0.0.0.0` | DNS server bind address |
+| `DNS_UPSTREAMS` | `[]` | Upstream DNS servers for unknown domains (e.g., `["8.8.8.8","1.1.1.1"]`) |
+| `NAMESERVERS` | `["ns1.mockflare.local","ns2.mockflare.local"]` | Nameservers assigned to new zones |
+
+## DNS Server
+
+A built-in DNS server starts automatically and resolves records from the database. Supports A, AAAA, CNAME, TXT, NS, and MX record types.
+
+```bash
+# Query the DNS server
+dig @localhost -p 10053 example.com A
+dig @localhost -p 10053 example.com TXT
+```
 
 ## Database
 
@@ -160,5 +174,7 @@ uv run ty check
 
 ```bash
 docker build -t mockflare .
-docker run -p 8000:8000 mockflare
+docker run -p 8000:8000 -p 10053:53/udp mockflare
 ```
+
+The container runs DNS on port 53 internally. Map to any host port (5353 shown above to avoid needing root).

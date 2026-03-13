@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.database import init_database
+from app.dns_server import start_dns_server
 from app.routes import custom_hostnames, dns_records, mockflare, zones
 from app.seed import seed_database
 
@@ -11,7 +12,12 @@ from app.seed import seed_database
 async def lifespan(app: FastAPI):
     init_database()
     seed_database()
+
+    dns_server = start_dns_server()
+
     yield
+
+    dns_server.stop()
 
 
 app = FastAPI(

@@ -3,8 +3,9 @@ name = "mockflare"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+    "dnslib>=0.9.26",
     "fastapi[standard]>=0.128.0",
-    "psycopg>=3.3.2",
+    "psycopg[binary]>=3.3.2",
     "pydantic-settings>=2.12.0",
     "sqlmodel>=0.0.31",
 ]
@@ -13,6 +14,7 @@ dependencies = [
 dev = [
     "httpx>=0.28.1",
     "pytest>=9.0.2",
+    "pytest-cov>=6.0.0",
     "ruff>=0.15.0",
     "ty>=0.0.14",
 ]
@@ -41,3 +43,21 @@ known-first-party = ["app"]
 
 [tool.ty.environment]
 python-version = "3.14"
+
+[tool.pytest.ini_options]
+addopts = "--cov=app --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "app/static/*",
+    "app/database.py",
+    "app/seed.py",
+]
+
+[tool.coverage.report]
+fail_under = 90
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+]

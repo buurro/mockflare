@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.config import settings
-from app.database import engine
 from app.models import (
     CustomHostname,
     CustomHostnameStatus,
@@ -64,14 +63,19 @@ def get_seed_data() -> SeedData | None:
     return SeedData.model_validate(data)
 
 
-def seed_database() -> None:
+def seed_database(db_engine=None) -> None:
     seed_data = get_seed_data()
 
     if seed_data is None:
         logger.info("Skipping seed data (SEED_DATA not set)")
         return
 
-    with Session(engine) as session:
+    if db_engine is None:
+        from app.database import engine
+
+        db_engine = engine
+
+    with Session(db_engine) as session:
         for zone_data in seed_data.zones:
             existing = session.exec(
                 select(Zone).where(Zone.name == zone_data.zone.name)
@@ -84,7 +88,7 @@ def seed_database() -> None:
             zone_kwargs = {
                 "name": zone_data.zone.name,
                 "account_id": zone_data.zone.account_id,
-                "name_servers": ["ns1.mockflare.com", "ns2.mockflare.com"],
+                "name_servers": settings.nameservers,
             }
             if zone_data.zone.id:
                 zone_kwargs["id"] = zone_data.zone.id

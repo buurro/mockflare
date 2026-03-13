@@ -4,17 +4,28 @@ from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
 from app.database import get_session
+from app.dns_server import set_dns_engine
 from app.main import app
 
 
-@pytest.fixture(name="session")
-def session_fixture():
+@pytest.fixture(name="engine")
+def engine_fixture():
+    """Create a shared in-memory SQLite engine for tests."""
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
     SQLModel.metadata.create_all(engine)
+    # Set the DNS engine to use the test engine
+    set_dns_engine(engine)
+    yield engine
+    # Reset the DNS engine after tests
+    set_dns_engine(None)
+
+
+@pytest.fixture(name="session")
+def session_fixture(engine):
     with Session(engine) as session:
         yield session
 
