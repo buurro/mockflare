@@ -3,6 +3,7 @@ from sqlmodel import Session
 
 from app.dns_server import MockflareDNSResolver, forward_to_upstream
 from app.models import DNSRecord as DNSRecordModel
+from app.models import DNSRecordType
 
 
 class TestMockflareDNSResolver:
@@ -11,7 +12,7 @@ class TestMockflareDNSResolver:
         record = DNSRecordModel(
             zone_id="test-zone",
             name="example.com",
-            type="A",
+            type=DNSRecordType.A,
             content="192.0.2.1",
             ttl=300,
         )
@@ -30,7 +31,7 @@ class TestMockflareDNSResolver:
         record = DNSRecordModel(
             zone_id="test-zone",
             name="example.com",
-            type="TXT",
+            type=DNSRecordType.TXT,
             content="v=spf1 include:example.com ~all",
             ttl=3600,
         )
@@ -48,7 +49,7 @@ class TestMockflareDNSResolver:
         record = DNSRecordModel(
             zone_id="test-zone",
             name="www.example.com",
-            type="CNAME",
+            type=DNSRecordType.CNAME,
             content="example.com",
             ttl=300,
         )
@@ -75,7 +76,7 @@ class TestMockflareDNSResolver:
             record = DNSRecordModel(
                 zone_id="test-zone",
                 name="multi.example.com",
-                type="A",
+                type=DNSRecordType.A,
                 content=ip,
                 ttl=300,
             )
@@ -92,7 +93,7 @@ class TestMockflareDNSResolver:
         record = DNSRecordModel(
             zone_id="test-zone",
             name="example.com",
-            type="A",
+            type=DNSRecordType.A,
             content="192.0.2.1",
             ttl=300,
         )
@@ -111,14 +112,14 @@ class TestMockflareDNSResolver:
         a_record = DNSRecordModel(
             zone_id="test-zone",
             name="any.example.com",
-            type="A",
+            type=DNSRecordType.A,
             content="192.0.2.1",
             ttl=300,
         )
         txt_record = DNSRecordModel(
             zone_id="test-zone",
             name="any.example.com",
-            type="TXT",
+            type=DNSRecordType.TXT,
             content="test",
             ttl=300,
         )
