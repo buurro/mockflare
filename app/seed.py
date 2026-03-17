@@ -85,25 +85,31 @@ def seed_database(db_engine=None) -> None:
                 logger.info(f"Zone {zone_data.zone.name} already exists, skipping")
                 continue
 
-            zone_kwargs = {
-                "name": zone_data.zone.name,
-                "account_id": zone_data.zone.account_id,
-                "name_servers": settings.nameservers,
-            }
+            zone = Zone(
+                name=zone_data.zone.name,
+                account_id=zone_data.zone.account_id,
+                name_servers=settings.nameservers,
+            )
             if zone_data.zone.id:
-                zone_kwargs["id"] = zone_data.zone.id
-            zone = Zone(**zone_kwargs)
+                zone.id = zone_data.zone.id
             session.add(zone)
             session.commit()
             session.refresh(zone)
             logger.info(f"Created zone: {zone.name} (id={zone.id})")
 
             for record in zone_data.dns_records:
-                record_kwargs = record.model_dump(exclude={"id"})
-                record_kwargs["zone_id"] = zone.id
+                dns_record = DNSRecord(
+                    name=record.name,
+                    type=record.type,
+                    content=record.content,
+                    ttl=record.ttl,
+                    proxied=record.proxied,
+                    comment=record.comment,
+                    tags=record.tags,
+                    zone_id=zone.id,
+                )
                 if record.id:
-                    record_kwargs["id"] = record.id
-                dns_record = DNSRecord(**record_kwargs)
+                    dns_record.id = record.id
                 session.add(dns_record)
             session.commit()
             logger.info(
@@ -111,18 +117,17 @@ def seed_database(db_engine=None) -> None:
             )
 
             for hostname in zone_data.custom_hostnames:
-                hostname_kwargs = {
-                    "zone_id": zone.id,
-                    "hostname": hostname.hostname,
-                    "status": hostname.status,
-                    "ssl_status": hostname.ssl_status,
-                    "custom_origin_server": hostname.custom_origin_server,
-                    "custom_origin_sni": hostname.custom_origin_sni,
-                    "custom_metadata": hostname.custom_metadata or {},
-                }
+                custom_hostname = CustomHostname(
+                    zone_id=zone.id,
+                    hostname=hostname.hostname,
+                    status=hostname.status,
+                    ssl_status=hostname.ssl_status,
+                    custom_origin_server=hostname.custom_origin_server,
+                    custom_origin_sni=hostname.custom_origin_sni,
+                    custom_metadata=hostname.custom_metadata or {},
+                )
                 if hostname.id:
-                    hostname_kwargs["id"] = hostname.id
-                custom_hostname = CustomHostname(**hostname_kwargs)
+                    custom_hostname.id = hostname.id
                 session.add(custom_hostname)
             session.commit()
             if zone_data.custom_hostnames:
