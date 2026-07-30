@@ -3,12 +3,14 @@ FROM python:3.14
 # Install uv.
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+WORKDIR /app
+
+# Install the dependencies first so they cache independently of source changes.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-cache
+
 # Copy the application into the container.
 COPY . /app
-
-# Install the application dependencies.
-WORKDIR /app
-RUN uv sync --frozen --no-cache
 
 # Expose HTTP and DNS ports.
 EXPOSE 8000
