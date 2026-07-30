@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.database import init_database
 from app.dns_server import start_dns_server
-from app.routes import custom_hostnames, dns_records, mockflare, zones
+from app.routes import custom_hostnames, dns_records, mockflare, purge_cache, zones
 from app.seed import seed_database
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Mockflare",
-    description="Mock Cloudflare API for DNS Records and Custom Hostnames",
+    description="Mock Cloudflare API for DNS Records, Custom Hostnames, and Cache Purge",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -35,6 +35,7 @@ app = FastAPI(
 app.include_router(zones.router)
 app.include_router(dns_records.router)
 app.include_router(custom_hostnames.router)
+app.include_router(purge_cache.router)
 app.include_router(mockflare.router)
 
 # Mount static files

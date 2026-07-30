@@ -2,7 +2,7 @@
 
 > ⚠️ **AI-generated code, work in progress, for local development only.** Not affiliated with Cloudflare.
 
-A mock implementation of the Cloudflare API for local development and testing. Supports DNS Records and Custom Hostnames management. Includes a built-in DNS server that resolves records from the database.
+A mock implementation of the Cloudflare API for local development and testing. Supports DNS Records, Custom Hostnames, and Cache Purge management. Includes a built-in DNS server that resolves records from the database.
 
 ## Quick Start
 
@@ -35,6 +35,9 @@ Visit http://localhost:8000/docs for the API documentation.
 - `POST /zones/{zone_id}/custom_hostnames` - Create custom hostname
 - `PATCH /zones/{zone_id}/custom_hostnames/{hostname_id}` - Update custom hostname
 - `DELETE /zones/{zone_id}/custom_hostnames/{hostname_id}` - Delete custom hostname
+
+### Cache
+- `POST /zones/{zone_id}/purge_cache` - Purge cache (success-only mock response)
 
 #### Status Injection
 
