@@ -3,9 +3,12 @@ name: Build and Push
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  queue: max
 
 env:
   REGISTRY: ghcr.io
@@ -55,7 +58,16 @@ jobs:
 
       - name: Get package version
         id: version
-        run: echo "version=$(uv version --short)" >> "$GITHUB_OUTPUT"
+        run: |
+          VERSION="$(uv version --short)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "major_minor=${VERSION%.*}" >> "$GITHUB_OUTPUT"
+          echo "major=${VERSION%%.*}" >> "$GITHUB_OUTPUT"
+          if [ -n "$(git ls-remote --tags origin "refs/tags/v$VERSION")" ]; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -77,10 +89,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=raw,value=${{ steps.version.outputs.version }},enable={{is_default_branch}}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ github.ref == 'refs/heads/main' && steps.version.outputs.new == 'true' }}
+            type=raw,value=${{ steps.version.outputs.major_minor }},enable=${{ github.ref == 'refs/heads/main' && steps.version.outputs.new == 'true' }}
+            type=raw,value=${{ steps.version.outputs.major }},enable=${{ github.ref == 'refs/heads/main' && steps.version.outputs.new == 'true' }}
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
 
